@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>自訂地圖標記點圖示 - Map8 Platform Documentation</title>
+    <link
+      rel="stylesheet"
+      href="https://api.map8.zone/css/gomp.css?key=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJodHRwczpcL1wvd3d3LmNuZy5jb20udHdcL19ZaUxhbiIsIm5hbWUiOiJ0YWl3YW5ubzFtaWxrQGdtYWlsLmNvbSIsImlhdCI6MTY3OTkwMjcxMCwib2JqZWN0cyI6WyJcL21hcHNcL2pzIiwiXC9tYXBzXC9zdGF0aWMiLCJcL3BsYWNlXC9nZW9jb2RlIiwiXC9wbGFjZVwvZmluZHBsYWNlZnJvbXRleHQiLCJcL3BsYWNlXC9uZWFyYnlzZWFyY2giLCJcL3BsYWNlXC90ZXh0c2VhcmNoIiwiXC9wbGFjZVwvYXV0b2NvbXBsZXRlIiwiXC9kYXRhIiwiXC9zdHlsZXMiLCJcL3Nwcml0ZXMiLCJcL2ZvbnRzIiwiXC9yb3V0ZVwvZGlyZWN0aW9ucyIsIlwvcm91dGVcL2Rpc3RhbmNlbWF0cml4IiwiXC9yb3V0ZVwvdHJpcCIsIlwvcm9hZFwvbmVhcmVzdFJvYWRzIiwiXC9yb2FkXC9zbmFwVG9Sb2FkcyIsIlwvcm91dGVcL3ZycCJdLCJleHAiOjE5OTY3MzE1MTB9.HCqcSvBrcCyWUsh1yf1a1yjP31iQ2iTJJYGdiwMyE6M"
+    />
+    <style>
+      body {
+        font-size: 13px;
+      }
+      #map {
+        height: 80vh;
+        width: 100%;
+      }
+
+      button {
+        margin: 15px;
+        padding: 10px 15px;
+        border-radius: 10px;
+        background-color: aquamarine;
+      }
+
+      #file-selector {
+        display: none;
+      }
+
+      #File_Btn {
+        display: inline-block;
+        text-align: center;
+        margin: 15px;
+        padding: 10px 15px;
+        width: 55px;
+        height: 15px;
+        cursor: pointer;
+        background: aquamarine;
+        border: 2px solid;
+        border-radius: 10px;
+      }
+
+      .cngWeb {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 配送路線地圖 -->
+    <div id="map"></div>
+
+    <!-- 操作系統 -->
+    <div class="cngWeb">
+      <label for="file-selector" id="File_Btn">
+        <input id="file-selector" type="file" />上傳檔案
+      </label>
+      <button id="download-btn" disabled="true">點擊下載</button>
+      <button onclick="cleanLayer()">清除路線</button>
+      <div id="ErrorMessage"></div>
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.8/xlsx.full.min.js"></script>
+    <script
+      type="text/javascript"
+      src="https://api.map8.zone/maps/js/gomp.js?key=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJodHRwczpcL1wvd3d3LmNuZy5jb20udHdcL19ZaUxhbiIsIm5hbWUiOiJ0YWl3YW5ubzFtaWxrQGdtYWlsLmNvbSIsImlhdCI6MTY3OTkwMjcxMCwib2JqZWN0cyI6WyJcL21hcHNcL2pzIiwiXC9tYXBzXC9zdGF0aWMiLCJcL3BsYWNlXC9nZW9jb2RlIiwiXC9wbGFjZVwvZmluZHBsYWNlZnJvbXRleHQiLCJcL3BsYWNlXC9uZWFyYnlzZWFyY2giLCJcL3BsYWNlXC90ZXh0c2VhcmNoIiwiXC9wbGFjZVwvYXV0b2NvbXBsZXRlIiwiXC9kYXRhIiwiXC9zdHlsZXMiLCJcL3Nwcml0ZXMiLCJcL2ZvbnRzIiwiXC9yb3V0ZVwvZGlyZWN0aW9ucyIsIlwvcm91dGVcL2Rpc3RhbmNlbWF0cml4IiwiXC9yb3V0ZVwvdHJpcCIsIlwvcm9hZFwvbmVhcmVzdFJvYWRzIiwiXC9yb2FkXC9zbmFwVG9Sb2FkcyIsIlwvcm91dGVcL3ZycCJdLCJleHAiOjE5OTY3MzE1MTB9.HCqcSvBrcCyWUsh1yf1a1yjP31iQ2iTJJYGdiwMyE6M"
+    ></script>
+    <script type="text/javascript">
+      //全域變數
+      let ExcelArray = [];
+      let result;
+      let display_array = [];
+      let sliceJsonData;
+      let jsonData;
+      let desiredValue;
+      let fileName;
+
+      // 獲取文件選擇器
+      const filelabel = document.getElementById("File_Btn");
+      const download_btn = document.getElementById("download-btn");
+      const fileSelector = document.getElementById("file-selector");
+
+      // 監聽當文件選擇器改變時的事件
+      fileSelector.addEventListener("change", async (event) => {
+        const fileList = await event.target.files;
+
+        // 檢查上傳文件是否有上傳
+        if (fileList.length > 0) {
+          const file = fileList[0];
+          fileName = file.name;
+          console.log(fileName);
+
+          // 使用FileRead API讀取檔案
+          const reader = await new FileReader();
+          await reader.readAsBinaryString(file);
+
+          // 在讀取完成後執行回調函數
+          reader.onload = async (event) => {
+            let location_array = [];
+            let WithoutSemi_array = [];
+            const data = await event.target.result;
+
+            // xls檔案傳進來時是二進制數據,傳入read函式，並回傳Excel檔案
+            const workbook = await XLSX.read(data, { type: "binary" });
+
+            // 工作簿中有很多個工作表 指定第一個工作表作為我們要操作的對象
+            const worksheet = await workbook.Sheets[workbook.SheetNames[0]];
+
+            // 抓取原始Excel檔的標題名稱 抓取B1欄位的值存放進變數當中
+            const cellAddress = "B1";
+            const desiredCell = worksheet[cellAddress];
+            desiredValue = desiredCell.v;
+
+            const test = XLSX.utils.sheet_add_aoa(worksheet, [
+              ["__EMPTY", "__EMPTY_1", "__EMPTY_2", "__EMPTY_3"],
+            ]);
+
+            //將Excel檔案轉成Json
+            jsonData = await XLSX.utils.sheet_to_json(test);
+            jsonData = [
+              {
+                __EMPTY: "",
+                __EMPTY_1: desiredValue,
+                __EMPTY_2: "",
+                __EMPTY_3: "",
+              },
+              { __EMPTY: "", __EMPTY_1: "", __EMPTY_2: "", __EMPTY_3: "" },
+              ...jsonData,
+            ];
+            slicejsonData = jsonData.splice(0, 4); // 忽略前4行
+            console.log(slicejsonData);
+            console.log(jsonData);
+
+            // 遍歷從Excel轉成的json陣列裡頭的每個元素 過濾出符合條件的資料並再放進到位置陣列(location_array->queryString)以及查詢陣列中
+            jsonData.map(async (row) => {
+              // 若衛星定位欄位的值是undefined或是字串長度小於10的,不將其欄位值放入到參數字串中.
+              if (
+                typeof row.__EMPTY_3 === "undefined" ||
+                row.__EMPTY_3.length < 10
+              ) {
+                return;
+              }
+              const originData = row.__EMPTY_3.split(","); // ['24.5947997', ' 121.8370754']
+              const formatData = row.__EMPTY_3.split(",").reverse(); // [ '121.231212', '21.332156']
+              const latlngString = formatData.join(",").trim(); // '121.321312,21.231231'
+
+              // 根據ExcelJson的值轉成物件並放入到空陣列當中, 回傳WithoutSemi_array 之後用於結合API傳回來的wayPoint陣列
+              WithoutSemi_array.push({
+                key: originData.join(","),
+                address: row.__EMPTY,
+                flavor_amount: row.__EMPTY_1,
+                count: row.__EMPTY_2,
+              });
+              return location_array.push(latlngString + ";");
+            });
+
+            //使用正規表達式將陣列轉字串並將最後一個元素的;刪除,回傳查詢字串準備進行查詢
+            const queryString = location_array.join("").replace(/;$/, "");
+
+            //向API發出請求並解析 將值存放在result變數當中
+            const fetchString =
+              "https://api.map8.zone/trip/car/" +
+              queryString +
+              ".json?key=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJodHRwczpcL1wvd3d3LmNuZy5jb20udHdcL19ZaUxhbiIsIm5hbWUiOiJ0YWl3YW5ubzFtaWxrQGdtYWlsLmNvbSIsImlhdCI6MTY3OTkwMjcxMCwib2JqZWN0cyI6WyJcL21hcHNcL2pzIiwiXC9tYXBzXC9zdGF0aWMiLCJcL3BsYWNlXC9nZW9jb2RlIiwiXC9wbGFjZVwvZmluZHBsYWNlZnJvbXRleHQiLCJcL3BsYWNlXC9uZWFyYnlzZWFyY2giLCJcL3BsYWNlXC90ZXh0c2VhcmNoIiwiXC9wbGFjZVwvYXV0b2NvbXBsZXRlIiwiXC9kYXRhIiwiXC9zdHlsZXMiLCJcL3Nwcml0ZXMiLCJcL2ZvbnRzIiwiXC9yb3V0ZVwvZGlyZWN0aW9ucyIsIlwvcm91dGVcL2Rpc3RhbmNlbWF0cml4IiwiXC9yb3V0ZVwvdHJpcCIsIlwvcm9hZFwvbmVhcmVzdFJvYWRzIiwiXC9yb2FkXC9zbmFwVG9Sb2FkcyIsIlwvcm91dGVcL3ZycCJdLCJleHAiOjE5OTY3MzE1MTB9.HCqcSvBrcCyWUsh1yf1a1yjP31iQ2iTJJYGdiwMyE6M&source=first&roundtrip=false&destination=last";
+            const response = await fetch(fetchString, {
+              method: "GET",
+            });
+            result = await response.json();
+            console.log(result);
+
+            // 檢查檔案是否讀取完畢 否則不讓使用者下載檔案
+            var intervalId = setInterval(function () {
+              if (result === undefined) {
+                download_btn.disabled = true;
+                clearTimeout(intervalId);
+              }
+
+              if (result !== undefined) {
+                download_btn.disabled = false;
+                clearInterval(intervalId);
+              }
+            }, 1000);
+
+            // waypoints是一個陣列其元素為物件,element_object.routePoint.waypoint_index指向在WithoutSemi_array的原本位置.
+            // 最後遍歷整個waypoints陣列後依序將配送點的物件存進display_array中．
+            const { waypoints } = result.trips[0];
+            waypoints.map(async (point) => {
+              const { waypoint_index } = point.routePoint;
+              return await display_array.push(
+                WithoutSemi_array[waypoint_index]
+              );
+            });
+
+            // 將display_array中的元素(物件)轉換為陣列, 最後製作的結果是ExcelArray 準備轉成二進制檔案讓使用者下載
+            ExcelArray = await display_array.map((item) => {
+              return [item.address, item.flavor_amount, item.count, item.key];
+            });
+          };
+        }
+      });
+      let CenterPoint = [121.837811, 24.614846];
+      gomp.accessToken =
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJodHRwczpcL1wvd3d3LmNuZy5jb20udHdcL19ZaUxhbiIsIm5hbWUiOiJ0YWl3YW5ubzFtaWxrQGdtYWlsLmNvbSIsImlhdCI6MTY3OTkwMjcxMCwib2JqZWN0cyI6WyJcL21hcHNcL2pzIiwiXC9tYXBzXC9zdGF0aWMiLCJcL3BsYWNlXC9nZW9jb2RlIiwiXC9wbGFjZVwvZmluZHBsYWNlZnJvbXRleHQiLCJcL3BsYWNlXC9uZWFyYnlzZWFyY2giLCJcL3BsYWNlXC90ZXh0c2VhcmNoIiwiXC9wbGFjZVwvYXV0b2NvbXBsZXRlIiwiXC9kYXRhIiwiXC9zdHlsZXMiLCJcL3Nwcml0ZXMiLCJcL2ZvbnRzIiwiXC9yb3V0ZVwvZGlyZWN0aW9ucyIsIlwvcm91dGVcL2Rpc3RhbmNlbWF0cml4IiwiXC9yb3V0ZVwvdHJpcCIsIlwvcm9hZFwvbmVhcmVzdFJvYWRzIiwiXC9yb2FkXC9zbmFwVG9Sb2FkcyIsIlwvcm91dGVcL3ZycCJdLCJleHAiOjE5OTY3MzE1MTB9.HCqcSvBrcCyWUsh1yf1a1yjP31iQ2iTJJYGdiwMyE6M";
+      var map = new gomp.Map({
+        container: "map", // 地圖容器 ID
+        style:
+          "https://api.map8.zone/styles/go-life-maps-tw-style-std/style.json", // 地圖樣式檔案位置
+        maxBounds: [
+          [105, 15],
+          [138.45858, 33.4],
+        ], // 台灣地圖區域
+        center: CenterPoint, // 初始中心座標，格式為 [lng, lat]
+        zoom: 16, // 初始 ZOOM LEVEL; [0-20, 0 為最小 (遠), 20 ;最大 (近)]
+        minZoom: 6, // 限制地圖可縮放之最小等級, 可省略, [0-19.99]
+        maxZoom: 19.99, // 限制地圖可縮放之最大等級, 可省略 [0-19.99]
+        pitch: 0, // 攝影機仰角, 可省略, [0-60]
+        bearing: 0, // 地圖角度, 可省略, [-180 ~ 180; 0 為正北朝上, 180 為正南朝上]
+        attributionControl: false,
+      }).addControl(
+        new gomp.AttributionControl({
+          compact: false,
+        })
+      );
+
+      let ind = 0;
+      let indArray = [];
+      let coordinates = [];
+
+      const lineString = {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: [],
+        },
+      };
+      const tripGeoJSON = {
+        type: "FeatureCollection",
+        features: [],
+      };
+      map.on("load", function () {
+        map.addSource("tripGeoJSON", {
+          type: "geojson",
+          data: tripGeoJSON,
+        });
+
+        // 地圖一載入 觸發疊加圖層事件
+        const tripStyle = [
+          // 大圈圈
+          {
+            id: "trip-waypoint-point-casing",
+            type: "circle",
+            source: "tripGeoJSON",
+            paint: {
+              "circle-radius": 20,
+              "circle-color": "#bdbd3c",
+            },
+            filter: ["in", "$type", "Point"],
+            index: 3,
+          },
+          // 小圈圈
+          {
+            id: "trip-waypoint-point",
+            type: "circle",
+            source: "tripGeoJSON",
+            paint: {
+              "circle-radius": 16,
+              "circle-color": "#fffe54",
+            },
+            filter: ["in", "$type", "Point"],
+            index: 4,
+          },
+
+          // 顯示路徑順序
+          {
+            id: "trip-waypoint-label",
+            type: "symbol",
+            source: "tripGeoJSON",
+            layout: {
+              "text-field": "{name}",
+              "text-font": ["Noto Sans Bold"],
+              "text-size": 20,
+              "text-offset": [0, 0],
+              "text-anchor": "center",
+              "text-allow-overlap": true,
+              "text-ignore-placement": true,
+            },
+            paint: {
+              "text-color": "#333",
+              "text-halo-color": "rgba(255,255,255,0.8)",
+              "text-halo-width": 1.2,
+            },
+            filter: ["in", "$type", "Point"],
+            index: 1000,
+          },
+        ];
+        tripStyle.forEach((layer) => map.addLayer(layer));
+      });
+
+      // 繪制路徑
+      function draw(coordinates) {
+        const route = "route" + new Date().getTime().toString();
+        map.addLayer({
+          id: route,
+          type: "line",
+          source: {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: coordinates,
+              },
+            },
+          },
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#888",
+            "line-width": 8,
+          },
+        });
+        indArray.push(route);
+        map.moveLayer(route, "trip-waypoint-point");
+        map.moveLayer("trip-waypoint-point", "trip-waypoint-label");
+      }
+
+      // 要清除路線請執行此function
+      function cleanLayer() {
+        for (let route of indArray) {
+          map.removeLayer(route);
+          map.removeSource(route);
+        }
+        indArray = [];
+      }
+
+      document
+        .getElementById("download-btn")
+        .addEventListener("click", async () => {
+          const geometry_array = await result.trips[0].geometry.coordinates;
+          const location_LngLat = await result.trips[0].waypoints;
+          let boundingBox = [
+            [180, 90],
+            [-180, -90],
+          ];
+          for (let i = 0; i < location_LngLat.length; ++i) {
+            let thisWaypointLocation =
+              result.trips[0].waypoints[i].routePoint.location;
+
+            if (thisWaypointLocation[0] < boundingBox[0][0]) {
+              boundingBox[0][0] = thisWaypointLocation[0];
+            }
+            if (thisWaypointLocation[0] > boundingBox[1][0]) {
+              boundingBox[1][0] = thisWaypointLocation[0];
+            }
+            if (thisWaypointLocation[1] < boundingBox[0][1]) {
+              boundingBox[0][1] = thisWaypointLocation[1];
+            }
+            if (thisWaypointLocation[1] > boundingBox[1][1]) {
+              boundingBox[1][1] = thisWaypointLocation[1];
+            }
+          }
+          map.fitBounds(boundingBox, { duration: 1000 });
+          console.log(location_LngLat);
+          CenterPoint = location_LngLat[0].routePoint.location;
+          let LngLat_array = [];
+          location_LngLat.map((location_obj) => {
+            const lng = location_obj.routePoint.location[0]; // 經度121
+            const lat = location_obj.routePoint.location[1]; // 緯度23
+            LngLat_array.push([lng, lat]);
+          });
+
+          draw(geometry_array);
+          LngLat_array.map(async (location, index) => {
+            const priority = index + 1;
+            const display_string =
+              `(${priority})` + display_array[index].address;
+            tripGeoJSON.features.push({
+              type: "feature",
+              geometry: {
+                type: "Point",
+                coordinates: [location[0], location[1]],
+              },
+              properties: {
+                name: priority,
+              },
+            });
+            map.getSource("tripGeoJSON").setData(tripGeoJSON);
+          });
+          // 新增空白工作簿
+          const workbook = XLSX.utils.book_new();
+
+          // 將 JSON 轉換為工作表
+          // const worksheet = XLSX.utils.json_to_sheet(ExcelArray);
+
+          // 手動更改工作表上層內容
+          const top = ["", desiredValue, "", ""];
+          const space = ["", "", "", ""];
+          const headers = ["配送地址", "配送口味罐數", "小計", "衛星定位"];
+          const worksheet = XLSX.utils.aoa_to_sheet([
+            top,
+            space,
+            headers,
+            ...ExcelArray,
+          ]);
+
+          // 將工作表添加到工作簿
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+          // 將工作簿轉換為二進位制流文件
+          const wbBinary = XLSX.write(workbook, {
+            bookType: "xls",
+            type: "binary",
+          });
+
+          // 創建 Blob 對象
+          const blob = new Blob([s2ab(wbBinary)], {
+            type: "application/octet-stream",
+          });
+
+          // 創建下載鏈接
+          const downloadLink = document.createElement("a");
+          downloadLink.href = window.URL.createObjectURL(blob);
+          downloadLink.download = fileName;
+
+          // 模擬點擊下載鏈接
+          downloadLink.click();
+        });
+
+      // 將二進制字符串轉換為 ArrayBuffer 對象
+      function s2ab(s) {
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i < s.length; i++) {
+          view[i] = s.charCodeAt(i) & 0xff;
+        }
+        return buf;
+      }
+    </script>
+  </body>
+</html>
