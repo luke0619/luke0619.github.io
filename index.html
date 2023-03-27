@@ -77,6 +77,8 @@
       let jsonData;
       let desiredValue;
       let fileName;
+      let extension;
+      let wbOut;
 
       // 獲取文件選擇器
       const filelabel = document.getElementById("File_Btn");
@@ -92,7 +94,6 @@
           const file = fileList[0];
           fileName = file.name;
           console.log(fileName);
-
           // 使用FileRead API讀取檔案
           const reader = await new FileReader();
           await reader.readAsBinaryString(file);
@@ -413,14 +414,20 @@
           // 將工作表添加到工作簿
           XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
+          extension = fileName.split(".").pop();
           // 將工作簿轉換為二進位制流文件
-          const wbBinary = XLSX.write(workbook, {
-            bookType: "xls",
-            type: "binary",
-          });
+
+          if (extension === "xls") {
+            wbOut = XLSX.write(workbook, {
+              bookType: "xls",
+              type: "binary",
+            });
+          } else {
+            wbOut = XLSX.write(workbook, { bookType: "xlsx", type: "binary" });
+          }
 
           // 創建 Blob 對象
-          const blob = new Blob([s2ab(wbBinary)], {
+          const blob = new Blob([s2ab(wbOut)], {
             type: "application/octet-stream",
           });
 
