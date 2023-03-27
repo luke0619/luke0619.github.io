@@ -131,8 +131,8 @@
               { __EMPTY: "", __EMPTY_1: "", __EMPTY_2: "", __EMPTY_3: "" },
               ...jsonData,
             ];
-            slicejsonData = jsonData.splice(0, 4); // 忽略前4行
-            console.log(slicejsonData);
+            sliceJsonData = jsonData.splice(0, 4); // 忽略前4行
+            console.log(sliceJsonData);
             console.log(jsonData);
 
             // 遍歷從Excel轉成的json陣列裡頭的每個元素 過濾出符合條件的資料並再放進到位置陣列(location_array->queryString)以及查詢陣列中
@@ -404,10 +404,16 @@
           const top = ["", desiredValue, "", ""];
           const space = ["", "", "", ""];
           const headers = ["配送地址", "配送口味罐數", "小計", "衛星定位"];
+          const bonus1 = sliceJsonData[3].__EMPTY;
+          const bonus2 = sliceJsonData[3].__EMPTY_1;
+          const bonus3 = sliceJsonData[3].__EMPTY_2;
+          const bonus4 = sliceJsonData[3].__EMPTY_3;
+          const bonus_array = [bonus1, bonus2, bonus3, bonus4];
           const worksheet = XLSX.utils.aoa_to_sheet([
             top,
             space,
             headers,
+            bonus_array,
             ...ExcelArray,
           ]);
 
@@ -452,3 +458,4 @@
     </script>
   </body>
 </html>
+
