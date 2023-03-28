@@ -145,6 +145,9 @@
                 return;
               }
               const originData = row.__EMPTY_3.split(","); // ['24.5947997', ' 121.8370754']
+              if (originData[0] > 90 || originData[1] > 180) {
+                alert("資料有誤，請檢查原始檔案");
+              }
               const formatData = row.__EMPTY_3.split(",").reverse(); // [ '121.231212', '21.332156']
               const latlngString = formatData.join(",").trim(); // '121.321312,21.231231'
 
@@ -166,11 +169,17 @@
               "https://api.map8.zone/trip/car/" +
               queryString +
               ".json?key=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJodHRwczpcL1wvd3d3LmNuZy5jb20udHdcL19ZaUxhbiIsIm5hbWUiOiJ0YWl3YW5ubzFtaWxrQGdtYWlsLmNvbSIsImlhdCI6MTY3OTkwMjcxMCwib2JqZWN0cyI6WyJcL21hcHNcL2pzIiwiXC9tYXBzXC9zdGF0aWMiLCJcL3BsYWNlXC9nZW9jb2RlIiwiXC9wbGFjZVwvZmluZHBsYWNlZnJvbXRleHQiLCJcL3BsYWNlXC9uZWFyYnlzZWFyY2giLCJcL3BsYWNlXC90ZXh0c2VhcmNoIiwiXC9wbGFjZVwvYXV0b2NvbXBsZXRlIiwiXC9kYXRhIiwiXC9zdHlsZXMiLCJcL3Nwcml0ZXMiLCJcL2ZvbnRzIiwiXC9yb3V0ZVwvZGlyZWN0aW9ucyIsIlwvcm91dGVcL2Rpc3RhbmNlbWF0cml4IiwiXC9yb3V0ZVwvdHJpcCIsIlwvcm9hZFwvbmVhcmVzdFJvYWRzIiwiXC9yb2FkXC9zbmFwVG9Sb2FkcyIsIlwvcm91dGVcL3ZycCJdLCJleHAiOjE5OTY3MzE1MTB9.HCqcSvBrcCyWUsh1yf1a1yjP31iQ2iTJJYGdiwMyE6M&source=first&roundtrip=false&destination=last";
-            const response = await fetch(fetchString, {
-              method: "GET",
-            });
-            result = await response.json();
-            console.log(result);
+
+            result = await fetch(fetchString)
+              .then(async (response) => {
+                if (!response.ok) {
+                  throw new Error();
+                }
+                return await response.json();
+              })
+              .catch((error) => {
+                alert("資料請求失敗，請稍後再試");
+              });
 
             // 檢查檔案是否讀取完畢 否則不讓使用者下載檔案
             var intervalId = setInterval(function () {
@@ -423,6 +432,14 @@
           extension = fileName.split(".").pop();
           // 將工作簿轉換為二進位制流文件
 
+          if (extension === "XLS") {
+            wbOut = XLSX.write(workbook, {
+              bookType: "xls",
+              type: "binary",
+            });
+
+            fileName = fileName.replace("XLS", "xls");
+          }
           if (extension === "xls") {
             wbOut = XLSX.write(workbook, {
               bookType: "xls",
@@ -458,4 +475,3 @@
     </script>
   </body>
 </html>
-
